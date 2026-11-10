@@ -1,0 +1,872 @@
+# 1. gpu-booking UML 類別圖
+
+`gpu-booking` 是 FastAPI + SQLAlchemy 的後端，前端是 React/Vite。本文件以後端為主，分成領域模型（ORM）與服務層兩張圖；前端沒有類別，故略過。
+
+## 1. 領域模型類別圖（`backend/models.py`）
+
+```mermaid
+classDiagram
+direction TB
+
+class Base {
+    <<DeclarativeBase>>
+}
+class TimestampMixin {
+    <<mixin>>
+    +datetime created_at
+    +datetime updated_at
+    +datetime deleted_at
+}
+
+class User {
+    +UUID user_id
+    +str name
+    +str email
+}
+class Reviewer {
+    +UUID reviewer_id
+    +str name
+    +str position
+    +str email
+}
+class Reservation {
+    +UUID reservation_id
+    +UUID user_id
+    +int gi_quantity
+    +str purpose
+    +str project_funding_code
+    +str purchase_request_number
+    +str payer_name
+    +str expense_category
+    +str unit
+    +str mobile
+    +datetime start_time
+    +datetime end_time
+    +datetime billing_end_time
+    +datetime paid_end_time
+    +str connection_account
+    +str connection_password
+    +str connection_password_ciphertext
+    +str connection_password_nonce
+    +str connection_password_key_version
+    +str source_ip
+    +str status
+    +str docker_id
+}
+class ReservationEndAdjustment {
+    +UUID adjustment_id
+    +UUID reservation_id
+    +UUID reviewer_id
+    +str reviewer_name
+    +str reviewer_email
+    +datetime previous_end_time
+    +datetime new_end_time
+    +str reason
+    +datetime created_at
+}
+class ApplicantManager {
+    +UUID reservation_id
+    +str name
+    +str position
+    +str email
+}
+class ReviewerApprovalResult {
+    +UUID reservation_id
+    +UUID reviewer_id
+    +str status
+    +str reject_reason
+}
+class FinalApprovalResult {
+    +UUID reservation_id
+    +str manager_status
+    +str manager_reject_reason
+    +str final_status
+    +str final_reject_reason
+}
+class Receipt {
+    +UUID receipt_id
+    +UUID reservation_id
+    +str file_path
+    +str status
+    +str reject_reason
+}
+
+class ReservationExtension {
+    +UUID extension_id
+    +UUID reservation_id
+    +datetime original_end_time
+    +datetime requested_end_time
+    +str purpose
+    +str research_content
+    +str project_funding_code
+    +str purchase_request_number
+    +str payer_name
+    +str expense_category
+    +str status
+}
+class ExtensionReviewerApprovalResult {
+    +UUID extension_id
+    +UUID reviewer_id
+    +str status
+    +str reject_reason
+}
+class ExtensionFinalApprovalResult {
+    +UUID extension_id
+    +str manager_status
+    +str manager_reject_reason
+    +str final_status
+    +str final_reject_reason
+}
+class ExtensionReceipt {
+    +UUID receipt_id
+    +UUID extension_id
+    +str file_path
+    +str status
+    +str reject_reason
+}
+
+class Connection {
+    +str docker_id
+    +str target_ip
+    +str ssh_account
+    +str page_url
+    +str status
+}
+class GIStatus {
+    +str gi_id
+    +str status
+}
+class DockerGI {
+    +str docker_id
+    +str gi_id
+}
+class EnvironmentOperation {
+    +UUID operation_id
+    +UUID reservation_id
+    +str operation_type
+    +str status
+    +str request_id
+    +str assigned_gi_ids
+    +str external_id
+    +str response_payload
+    +datetime next_retry_at
+    +str error_message
+    +int attempt_count
+    +datetime access_email_sent_at
+    +int access_email_attempt_count
+    +datetime failure_email_sent_at
+    +datetime shutdown_reminder_sent_at
+    +int shutdown_reminder_attempt_count
+}
+class OrchestratorCallbackEvent {
+    +UUID callback_id
+    +str container_name
+    +str status
+    +str page_url
+    +str target_ip
+    +int port
+    +str error_message
+    +str raw_payload
+    +str payload_hash
+    +datetime processed_at
+    +str processing_error
+}
+
+class ProjectFund {
+    +str code
+    +Decimal initial_amount
+    +Decimal balance
+    +datetime created_at
+    +datetime approved_at
+}
+class ProjectFundUsage {
+    +UUID usage_id
+    +str fund_code
+    +UUID reservation_id
+    +UUID extension_id
+    +Decimal requested_amount
+    +Decimal deducted_amount
+    +datetime created_at
+    +datetime approved_at
+    +datetime refunded_at
+}
+class ProjectFundAdjustment {
+    +UUID adjustment_id
+    +str fund_code
+    +UUID reviewer_id
+    +str reviewer_name
+    +str reviewer_email
+    +Decimal previous_initial_amount
+    +Decimal new_initial_amount
+    +Decimal delta_amount
+    +Decimal previous_balance
+    +Decimal new_balance
+    +str reason
+}
+
+class ReviewAction {
+    +UUID action_id
+    +str target_kind
+    +UUID target_id
+    +str stage
+    +UUID reviewer_id
+    +str reviewer_name
+    +str reviewer_email
+    +str status
+    +str reason
+    +datetime created_at
+}
+class CancellationAction {
+    +UUID action_id
+    +UUID group_id
+    +str target_kind
+    +UUID target_id
+    +UUID reservation_id
+    +str previous_status
+    +str actor_kind
+    +UUID actor_principal_id
+    +str actor_name
+    +str actor_email
+    +bool is_cascade
+    +datetime notification_sent_at
+    +datetime notification_next_retry_at
+}
+class UsedSsoTicket {
+    +str jti
+    +datetime expires_at
+}
+
+%% 繼承
+TimestampMixin <|-- User
+TimestampMixin <|-- Reviewer
+TimestampMixin <|-- Reservation
+TimestampMixin <|-- ApplicantManager
+TimestampMixin <|-- ReviewerApprovalResult
+TimestampMixin <|-- FinalApprovalResult
+TimestampMixin <|-- Receipt
+TimestampMixin <|-- ReservationExtension
+TimestampMixin <|-- ExtensionReviewerApprovalResult
+TimestampMixin <|-- ExtensionFinalApprovalResult
+TimestampMixin <|-- ExtensionReceipt
+TimestampMixin <|-- Connection
+TimestampMixin <|-- GIStatus
+TimestampMixin <|-- DockerGI
+TimestampMixin <|-- EnvironmentOperation
+TimestampMixin <|-- OrchestratorCallbackEvent
+Base <|-- TimestampMixin
+Base <|-- ReservationEndAdjustment
+Base <|-- ProjectFund
+Base <|-- ProjectFundUsage
+Base <|-- ProjectFundAdjustment
+Base <|-- ReviewAction
+Base <|-- CancellationAction
+Base <|-- UsedSsoTicket
+
+%% 預約主線
+User "1" --> "0..*" Reservation : user_id
+Reservation "1" --> "0..1" Connection : docker_id (unique)
+Reservation "1" --> "0..1" ApplicantManager
+Reservation "1" --> "0..*" Receipt
+Reservation "1" --> "0..*" ReservationEndAdjustment
+Reservation "1" --> "0..*" EnvironmentOperation
+Reservation "1" --> "0..1" FinalApprovalResult
+Reservation "1" --> "0..*" ReviewerApprovalResult
+Reviewer "1" --> "0..*" ReviewerApprovalResult
+Reviewer "1" --> "0..*" ReservationEndAdjustment
+
+%% 展延
+Reservation "1" --> "0..*" ReservationExtension
+ReservationExtension "1" --> "0..*" ExtensionReceipt
+ReservationExtension "1" --> "0..1" ExtensionFinalApprovalResult
+ReservationExtension "1" --> "0..*" ExtensionReviewerApprovalResult
+Reviewer "1" --> "0..*" ExtensionReviewerApprovalResult
+
+%% GPU / 容器
+Connection "1" --> "0..*" DockerGI
+GIStatus "1" --> "0..*" DockerGI
+
+%% 經費
+ProjectFund "1" --> "0..*" ProjectFundUsage : fund_code
+ProjectFund "1" --> "0..*" ProjectFundAdjustment : fund_code
+Reviewer "1" --> "0..*" ProjectFundAdjustment
+Reservation "0..1" <-- "0..*" ProjectFundUsage : reservation_id (XOR)
+ReservationExtension "0..1" <-- "0..*" ProjectFundUsage : extension_id (XOR)
+
+%% 審核紀錄
+Reviewer "1" --> "0..*" ReviewAction
+
+%% 多型關聯（無實體 FK，用 target_kind + target_id 指向）
+ReviewAction ..> Reservation : target_kind=RESERVATION
+ReviewAction ..> ReservationExtension : target_kind=EXTENSION
+CancellationAction ..> Reservation : reservation_id
+CancellationAction ..> ReservationExtension : target_kind=EXTENSION
+OrchestratorCallbackEvent ..> Connection : container_name ≈ docker_id
+```
+
+## 2. 服務層、設定與 API 結構
+
+```mermaid
+classDiagram
+direction LR
+
+class Settings {
+    <<frozen dataclass>>
+    +str database_url
+    +str session_secret_key
+    +str reservation_password_key
+    +str orchestrator_base_url
+    +str orchestrator_auth_token
+    +str orchestrator_callback_auth_token
+    +int orchestrator_ssh_port
+    +str libreoffice_binary
+    +str receipt_dir
+    +tuple environment_admin_emails
+    +str portal_sso_secret
+    +…其他設定欄位
+}
+class APIError {
+    <<Exception>>
+    +int status_code
+    +str code
+    +str message
+}
+class OrchestratorError {
+    <<RuntimeError>>
+}
+class OrchestratorClient {
+    -Settings settings
+    -_headers(request_id) dict
+    +open(devices, client_ip, account, password, request_id) dict
+    +close(...) dict
+}
+
+class AuthModule {
+    <<module auth.py>>
+    +require_session_login(request) dict
+    +active_user() User
+    +active_handler() Reviewer
+    +google_login()
+    +google_callback()
+    +portal_sso()
+    +me()
+    +logout()
+}
+class DomainModule {
+    <<module domain.py>>
+    +get_active_user(db, principal) User
+    +get_owner(db, reservation_id, principal)
+    +get_handler(db, principal) Reviewer
+    +configured_handlers(db) list~Reviewer~
+    +capacity_intervals(db) list
+    +can_cancel_reservation(db, r) bool
+    +can_apply_extension(db, r) bool
+    +serialize_reservation(db, r) dict
+    +serialize_extension(db, e) dict
+}
+class RentalTime {
+    <<module services/rental_time>>
+    +is_advance_booking_allowed()
+    +is_booking_duration_allowed()
+    +get_actual_occupancy_range()
+    +peak_usage()
+    +has_capacity()
+    +teardown_time()
+    +next_retry_at()
+}
+class EnvironmentService {
+    <<module services/environment_service>>
+    +provision_due(db, settings, client)
+    +teardown_due(db, settings, client)
+    +handle_callback(db, settings, token, payload)
+    +reconcile_callback_events()
+    +send_access_emails()
+    +send_failure_emails()
+    +send_shutdown_reminders()
+}
+class ProjectFunds {
+    <<module services/project_funds>>
+    +reserve_funds(db, subject, body, amount)
+    +settle_funds(db, subject, refund)
+    +fund_data(db, subject)
+}
+class Cancellations {
+    <<module services/cancellations>>
+    +cancellation_actor()
+    +record_cancellation()
+    +cancel_pending_receipts()
+    +send_cancellation_notice()
+    +retry_cancellation_notices()
+}
+class ApplicationExpiry {
+    <<module services/application_expiry>>
+    +application_deadline()
+    +cancel_if_expired()
+    +ensure_not_expired()
+}
+class GmailService {
+    <<module services/gmail_service>>
+    +send_email()
+    +notify_safely()
+    +approval_link()
+    +environment_access_body()
+}
+class Documents {
+    <<module services/documents>>
+    +application_form_docx()
+    +application_form_pdf()
+}
+class PasswordCrypto {
+    <<module services/password_crypto>>
+    +encrypt_password()
+    +decrypt_password()
+    +password_for_reservation()
+}
+class ReviewTeam {
+    <<module services/review_team>>
+    +audit_review()
+    +application_form_signature()
+}
+class OtherServices {
+    <<modules>>
+    nkust: account_profile / faculty_profile
+    campus_ips: validate_campus_ip
+    receipts: store_upload
+    v3_reconciliation: reconcile_pending_reviews
+}
+class Tasks {
+    <<module tasks.py 排程>>
+    +cancel_incomplete_applications()
+    +provision_job()
+    +teardown_job()
+    +access_email_job()
+    +failure_email_job()
+    +send_reminder()
+    +callback_reconciliation_job()
+}
+class Routes {
+    <<FastAPI routers>>
+    main.py
+    routes_extensions.py
+    routes_reservation_management.py
+}
+class Schemas {
+    <<Pydantic>>
+    ProjectFundInput
+    ReservationCreate
+    ExtensionCreate
+    ExtensionReviewRequest
+    ReviewRequest
+    ReceiptReviewRequest
+    ReservationEndAdjustmentRequest
+    ProjectFundAdjustmentRequest
+    ReviewerManagementUpdate
+    ReviewerUpdateItem
+    OrchestratorStatusRequest
+}
+
+OrchestratorError --|> RuntimeError
+OrchestratorClient ..> OrchestratorError : raises
+OrchestratorClient --> Settings
+ProjectFundInput <|-- ReservationCreate
+ProjectFundInput <|-- ExtensionCreate
+ReviewRequest <|-- ExtensionReviewRequest
+
+Routes ..> Schemas : 請求驗證
+Routes ..> AuthModule : Depends
+Routes ..> DomainModule
+Routes ..> ProjectFunds
+Routes ..> Cancellations
+Routes ..> Documents
+Routes ..> ReviewTeam
+Routes ..> EnvironmentService : callback
+Routes ..> APIError : raises
+DomainModule ..> RentalTime
+DomainModule ..> ProjectFunds
+DomainModule ..> APIError
+Cancellations ..> GmailService
+Cancellations ..> ProjectFunds
+ApplicationExpiry ..> Cancellations
+EnvironmentService --> OrchestratorClient
+EnvironmentService ..> Settings
+EnvironmentService ..> PasswordCrypto
+EnvironmentService ..> GmailService
+EnvironmentService ..> RentalTime
+Tasks ..> EnvironmentService
+Tasks ..> ApplicationExpiry
+Tasks ..> Cancellations
+Documents ..> Settings
+GmailService ..> Settings
+```
+
+## 說明
+
+- **預約流程**：`User` 建立 `Reservation`（核心聚合）。`Reservation` 底下掛：
+  - 審核：`ReviewerApprovalResult`、`FinalApprovalResult`。
+  - 收據：`Receipt`。
+  - 展延：`ReservationExtension`，展延有自己的一套審核與收據。
+  - 環境佈建：`EnvironmentOperation`，類型分 provision 與 teardown。
+- **GPU 容器**：`Reservation` 以 `docker_id` 關聯 `Connection`。`Connection` 與 `GIStatus` 透過 `DockerGI` 形成多對多。
+- **經費**：`ProjectFundUsage` 以 CHECK 約束保證 `reservation_id` 與 `extension_id` 二選一（XOR）。`ProjectFundAdjustment` 記錄審核者調整額度。
+- **無外鍵的多型關聯**：
+  - `ReviewAction` 與 `CancellationAction` 用 `target_kind` + `target_id` 指向 Reservation 或 Extension。
+  - `OrchestratorCallbackEvent` 以 `container_name` 對應 `docker_id`。
+  - 這些在圖中用虛線表示。
+- **獨立實體**：`UsedSsoTicket` 用來防止 SSO ticket 被重複使用，與其他類別沒有關聯。
+- **服務層**：這些是函式模組，不是 class，圖中以 `<<module>>` 標示。只有 `OrchestratorClient`、`Settings`、`APIError` 和 Pydantic schemas 是真正的類別。
+- **畫法取捨**：Reservation 的 `status` 等狀態是字串，不是 Enum，所以圖中沒有畫 Enum 類別。
+
+---
+
+# 2. 循序圖
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 申請人
+    actor H as 承辦人
+    participant FE as Frontend (React)
+    participant API as FastAPI (main.py)
+    participant DB as Database
+    participant FUND as project_funds
+    participant MAIL as GmailService
+    participant SCH as APScheduler (tasks.py)
+    participant ENV as environment_service
+    participant ORC as OrchestratorClient / H200
+
+    rect rgb(235, 245, 255)
+    Note over U,MAIL: 階段一：申請與審核
+    U->>FE: 填寫預約表單
+    FE->>API: POST /api/reservations
+    API->>DB: get_active_user()
+    API->>API: 驗證提前天數(2天)、期間(≤7天)
+    API->>DB: lock_capacity() + capacity_intervals()
+    alt GPU Instance 不足
+        API-->>FE: 409 INSUFFICIENT_GI
+    else 容量足夠
+        API->>API: encrypt_password()
+        API->>DB: 新增 Reservation(UNDER_REVIEW)
+        API->>FUND: reserve_funds()
+        API->>DB: 新增 FinalApprovalResult, commit
+        API-->>FE: 201 reservation_id
+        API-)MAIL: (背景) 通知所有承辦人審核
+    end
+
+    H->>FE: 開啟審核連結
+    FE->>API: GET /api/approvals/info
+    API-->>FE: 預約內容 + need_review
+    H->>FE: 核准 / 退回
+    FE->>API: POST /api/approvals/review
+    API->>DB: 鎖定 Reservation / FinalApprovalResult
+    API->>DB: audit_review() 寫入 ReviewAction
+    alt 核准
+        API->>DB: status = PENDING_PAYMENT
+        API->>FUND: settle_funds(refund=false)
+    else 退回
+        API->>DB: status = REJECTED
+        API->>FUND: settle_funds(refund=true)
+    end
+    API-)MAIL: (背景) 通知申請人審核結果
+    end
+
+    rect rgb(240, 255, 240)
+    Note over U,MAIL: 階段二：繳費與收據審核
+    U->>FE: 下載申請表
+    FE->>API: GET /api/reservations/{id}/application-form
+    API-->>FE: application_form_pdf()
+    U->>FE: 繳費後上傳收據
+    FE->>API: POST /api/reservations/{id}/receipts
+    API->>API: store_upload() 存檔
+    API->>DB: 舊收據 deleted_at、新增 Receipt(PENDING)
+    API->>DB: status = RECEIPT_UNDER_REVIEW
+    API-)MAIL: (背景) 通知承辦人收據待審
+
+    H->>FE: 審核收據
+    FE->>API: POST /api/receipts/{id}/review
+    alt 核准
+        API->>DB: Receipt=APPROVED, status = RESERVED
+    else 退回
+        API->>DB: Receipt=REJECTED, status = RECEIPT_REJECTED
+        Note right of U: 申請人可重新上傳收據
+    end
+    API-)MAIL: (背景) 通知申請人收據結果
+    end
+
+    rect rgb(255, 248, 235)
+    Note over SCH,ORC: 階段三：環境佈建（開始日前一晚 23:30–23:40 台北時間）
+    SCH->>ENV: provision_job() → provision_due()
+    ENV->>DB: 查詢 RESERVED / PROVISIONING 且即將開始
+    ENV->>DB: 取得/建立 EnvironmentOperation(PROVISION)
+    ENV->>DB: 鎖定 IDLE 的 GIStatus → ALLOCATING
+    ENV->>DB: status = PROVISIONING, op = RUNNING
+    ENV->>ORC: open(devices, client_ip, account, password, request_id)
+    alt 呼叫成功
+        ORC-->>ENV: container_name, ssh_account
+        ENV->>DB: 新增/更新 Connection(OPENING)，Reservation.docker_id 綁定
+    else 呼叫失敗
+        ORC--xENV: OrchestratorError
+        ENV->>DB: op = FAILED, 記錄 next_retry_at（排程下次重試）
+    end
+    end
+
+    rect rgb(250, 240, 255)
+    Note over ORC,MAIL: 階段四：Orchestrator 回呼與存取通知
+    ORC->>API: POST /api/v1/orchestrator/container/status
+    API->>ENV: handle_callback(token, payload)
+    ENV->>ENV: 驗證 X-Orchestrator-Auth
+    ENV->>DB: 儲存 OrchestratorCallbackEvent (payload_hash 防重複)
+    ENV->>DB: reconcile_callback_events()
+    alt running
+        ENV->>DB: Connection=RUNNING, Reservation=IN_USE, GI 標記使用中
+        API->>ENV: send_access_emails()
+        ENV-)MAIL: 寄送 SSH 連線資訊給申請人
+    else failed
+        ENV->>DB: op = FAILED，等待重試
+        SCH->>ENV: failure_email_job()
+        ENV-)MAIL: 超過重試仍失敗時通知管理者
+    end
+    API-->>ORC: 200 accepted
+    Note over SCH,ENV: callback_reconciliation_job 每分鐘補處理未完成的回呼
+
+    SCH->>ENV: send_reminder() (結束日 00:00–00:10)
+    ENV-)MAIL: 關機提醒
+    SCH->>ENV: teardown_job() → teardown_due() (00:30–00:40)
+    ENV->>ORC: 關閉容器
+    ENV->>DB: Reservation = COMPLETED，釋放 GIStatus
+    end
+```
+
+### 補充流程：展延與取消（摘要）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 申請人
+    actor H as 承辦人
+    participant API as FastAPI
+    participant DB as Database
+    participant FUND as project_funds
+    participant MAIL as GmailService
+    participant SCH as APScheduler
+
+    U->>API: POST /api/reservations/{id}/extensions
+    API->>DB: can_apply_extension() / incremental_capacity()
+    API->>DB: 新增 ReservationExtension
+    API->>FUND: reserve_funds()
+    API-)MAIL: 通知承辦人審核
+    H->>API: POST /api/extensions/{id}/review
+    API->>DB: 核准 → PENDING_PAYMENT / 退回 → REJECTED
+    U->>API: POST /api/extensions/{id}/receipts
+    H->>API: POST /api/extension-receipts/{id}/review
+    API->>DB: 核准後延長預約結束時間
+
+    alt 申請人取消
+        U->>API: POST /api/reservations/{id}/cancel
+        API->>DB: can_cancel_reservation() 通過才允許
+        API->>DB: record_cancellation() + cancel_pending_receipts()
+        API->>FUND: settle_funds(refund=true)
+        API-)MAIL: send_cancellation_notice()
+    else 逾期未完成（每晚 23:30 / 00:00）
+        SCH->>DB: cancel_incomplete_applications()
+        SCH->>FUND: 退還經費
+    end
+    SCH->>MAIL: retry_cancellation_notices() 每 5 分鐘重送失敗通知
+```
+
+### 序列圖狀態對照
+
+`Reservation.status` 在流程中依序變化：
+
+`UNDER_REVIEW` → `PENDING_PAYMENT` → `RECEIPT_UNDER_REVIEW` → `RECEIPT_REJECTED`（可回到上傳）／`RESERVED` → `PROVISIONING` → `IN_USE` → `COMPLETED`
+
+另有分支：`REJECTED`（承辦人退回）、`CANCELLED`（取消或逾期）。
+
+> 註：`IN_USE` 由 `reconcile_callback_events()` 在收到 running 回呼時設定；`TERMINATING` → `COMPLETED` 由 `teardown_due()` 設定（關閉失敗且無法重試時為 `TEARDOWN_FAILED`）。
+
+---
+
+# 3. 活動圖
+
+依據 `main.py`、`environment_service.py`、`tasks.py`、`domain.py` 的實際判斷分支繪製。
+
+### 4.1 預約申請與審核流程
+
+```mermaid
+flowchart TD
+    Start([開始]) --> A1[申請人填寫預約表單]
+    A1 --> A2[POST /api/reservations]
+    A2 --> D1{開始日期 ≥ 台灣日期 +2 天?}
+    D1 -- 否 --> E1[/422 ADVANCE_BOOKING_REQUIRED/]
+    D1 -- 是 --> D2{期間 ≤ 7 天?}
+    D2 -- 否 --> E2[/422 BOOKING_PERIOD_TOO_LONG/]
+    D2 -- 是 --> D3{已設定承辦人?}
+    D3 -- 否 --> E3[/500 REVIEWER_CONFIGURATION_INVALID/]
+    D3 -- 是 --> A3[鎖定容量 lock_capacity]
+    A3 --> D4{GPU Instance 足夠?}
+    D4 -- 否 --> E4[/409 INSUFFICIENT_GI/]
+    D4 -- 是 --> A4[加密連線密碼]
+    A4 --> A5[建立 Reservation: UNDER_REVIEW]
+    A5 --> A6[reserve_funds 預扣專案經費]
+    A6 --> A7[建立 FinalApprovalResult]
+    A7 --> A8[commit 並寄信通知所有承辦人]
+    A8 --> B1[承辦人開啟審核連結]
+    B1 --> D5{階段仍為 INITIAL 且未逾期?}
+    D5 -- 否 --> E5[/409 APPROVAL_ALREADY_CLOSED 或自動取消/]
+    D5 -- 是 --> D6{審核結果}
+    D6 -- 核准 --> B2[status = PENDING_PAYMENT]
+    D6 -- 退回 --> B3[status = REJECTED]
+    B2 --> B4[settle_funds 扣款確認]
+    B3 --> B5[settle_funds refund 退還經費]
+    B4 --> B6[寄信通知申請人審核結果]
+    B5 --> B6
+    B6 --> D7{是否核准?}
+    D7 -- 否 --> End1([結束: 已退回])
+    D7 -- 是 --> Next([進入繳費流程])
+```
+
+### 4.2 繳費與收據審核流程（含泳道）
+
+```mermaid
+flowchart TD
+    subgraph U[申請人]
+        U1[下載申請表 PDF]
+        U2[線下繳費]
+        U3[上傳收據]
+        U4[重新上傳正確收據]
+    end
+    subgraph S[系統]
+        S1{狀態為 PENDING_PAYMENT 或 RECEIPT_REJECTED?}
+        S2[store_upload 儲存檔案]
+        S3[舊收據標記 deleted_at]
+        S4[建立 Receipt: PENDING]
+        S5[status = RECEIPT_UNDER_REVIEW]
+        S6[寄信通知承辦人]
+        S7[Receipt = APPROVED<br/>status = RESERVED]
+        S8[Receipt = REJECTED<br/>status = RECEIPT_REJECTED]
+        S9[寄信通知申請人結果]
+        S10{截止前仍未完成?}
+        S11[排程取消申請並退還經費]
+    end
+    subgraph H[承辦人]
+        H1[檢視收據]
+        H2{審核結果}
+    end
+
+    Start([由 PENDING_PAYMENT 開始]) --> U1 --> U2 --> S1
+    S1 -- 否 --> X[/409 不可上傳/]
+    S1 -- 是 --> U3 --> S2 --> S3 --> S4 --> S5 --> S6 --> H1 --> H2
+    H2 -- 核准 --> S7 --> S9
+    H2 -- 退回 --> S8 --> S9
+    S9 --> Z{收據是否通過?}
+    Z -- 是 --> End([預約成立 RESERVED])
+    Z -- 否 --> S10
+    S10 -- 是 --> S11 --> End2([CANCELLED])
+    S10 -- 否 --> U4 --> S2
+```
+
+### 4.3 環境佈建、回呼與回收流程
+
+```mermaid
+flowchart TD
+    subgraph SCH[排程 APScheduler]
+        P0[provision_job<br/>台北 23:30-23:40]
+        T0[teardown_job<br/>台北 00:30-00:40]
+        R0[send_reminder<br/>00:00-00:10 關機提醒]
+        C0[callback_reconciliation_job<br/>每分鐘]
+    end
+    subgraph ENV[environment_service]
+        P1[查詢 RESERVED/PROVISIONING<br/>且開始時間 ≤ now+30 分]
+        P2{在佈建時間窗內?}
+        P3{op 已 SUCCEEDED<br/>或 RUNNING 或未到重試時間?}
+        P4[鎖定 IDLE 的 GIStatus]
+        P5{可用 GI 數 = 申請數量?}
+        P6[GI → ALLOCATING<br/>Reservation → PROVISIONING]
+        P7[呼叫 OrchestratorClient.open]
+        P8{呼叫成功?}
+        P9[建立/更新 Connection: OPENING<br/>綁定 docker_id]
+        P10[op = FAILED<br/>設定 next_retry_at]
+        CB1[handle_callback 驗證 token]
+        CB2[儲存 CallbackEvent<br/>payload_hash 防重複]
+        CB3{回呼狀態}
+        CB4[GI → IN_USE, 建立 DockerGI<br/>Connection → RUNNING<br/>Reservation → IN_USE<br/>op = SUCCEEDED]
+        CB5[op = FAILED<br/>設定 next_retry_at]
+        CB6[send_access_emails<br/>寄 SSH 連線資訊]
+        T1[查詢 IN_USE/TERMINATING]
+        T2{在回收時間窗內?}
+        T3[GI → RELEASING<br/>Reservation → TERMINATING]
+        T4[呼叫 OrchestratorClient.close]
+        T5{關閉成功?}
+        T6[GI → IDLE<br/>Connection → DESTROYED<br/>Reservation → COMPLETED<br/>清除加密密碼]
+        T7{還有重試時間?}
+        T8[Reservation → TEARDOWN_FAILED]
+        T9[設定 next_retry_at 待重試]
+    end
+    ORC[(Orchestrator / H200)]
+
+    Start([RESERVED]) --> P0 --> P1 --> P2
+    P2 -- 否 --> Skip1([略過])
+    P2 -- 是 --> P3
+    P3 -- 是 --> Skip1
+    P3 -- 否 --> P4 --> P5
+    P5 -- 否 --> Skip1
+    P5 -- 是 --> P6 --> P7 --> ORC
+    ORC --> P8
+    P8 -- 是 --> P9 --> Wait([等待 Orchestrator 回呼])
+    P8 -- 否 --> P10 --> Retry([下次排程重試])
+
+    Wait --> CB1
+    C0 -.補處理未完成事件.-> CB2
+    ORC -. POST /container/status .-> CB1
+    CB1 --> CB2 --> CB3
+    CB3 -- running --> CB4 --> CB6 --> Using([IN_USE 使用中])
+    CB3 -- failed --> CB5 --> Retry
+
+    Using --> R0
+    Using --> T0 --> T1 --> T2
+    T2 -- 否 --> Skip2([略過])
+    T2 -- 是 --> T3 --> T4 --> ORC
+    ORC --> T5
+    T5 -- 是 --> T6 --> End([COMPLETED])
+    T5 -- 否 --> T7
+    T7 -- 是 --> T9 --> Skip2
+    T7 -- 否 --> T8 --> End2([TEARDOWN_FAILED])
+```
+
+### 4.4 展延與取消流程
+
+```mermaid
+flowchart TD
+    Start([預約 RESERVED 或 IN_USE]) --> X1{選擇操作}
+
+    X1 -- 申請展延 --> E1{can_apply_extension?<br/>狀態合法、未過展延截止、無進行中展延}
+    E1 -- 否 --> E1x[/拒絕/]
+    E1 -- 是 --> E2{增量容量足夠?}
+    E2 -- 否 --> E2x[/409 容量不足/]
+    E2 -- 是 --> E3[建立 ReservationExtension<br/>reserve_funds 預扣經費]
+    E3 --> E4[寄信通知承辦人]
+    E4 --> E5{承辦人審核}
+    E5 -- 退回 --> E6[Extension = REJECTED<br/>退還經費]
+    E5 -- 核准 --> E7[PENDING_PAYMENT]
+    E7 --> E8[申請人下載表單並上傳收據]
+    E8 --> E9{承辦人審核收據}
+    E9 -- 退回 --> E8
+    E9 -- 核准 --> E10[Extension = APPROVED<br/>延長 end_time]
+    E10 --> Done1([展延完成])
+
+    X1 -- 取消預約 --> C1{can_cancel_reservation?<br/>RESERVED 或 尚無已核准收據的審核/繳費中}
+    C1 -- 否 --> C1x[/拒絕取消/]
+    C1 -- 是 --> C2[record_cancellation 寫入 CancellationAction]
+    C2 --> C3[cancel_pending_receipts]
+    C3 --> C4[連帶取消進行中的展延]
+    C4 --> C5[settle_funds 退還經費]
+    C5 --> C6[Reservation = CANCELLED]
+    C6 --> C7[send_cancellation_notice]
+    C7 --> C8{寄信成功?}
+    C8 -- 否 --> C9[retry_cancellation_notices<br/>每 5 分鐘重試]
+    C9 --> C8
+    C8 -- 是 --> Done2([取消完成])
+
+    X1 -- 逾期未完成 --> T1[每晚 cancel_incomplete_applications<br/>23:30 預約 / 00:00 展延]
+    T1 --> T2{cancel_if_expired?}
+    T2 -- 是 --> C2
+    T2 -- 否 --> Skip([略過])
+```
